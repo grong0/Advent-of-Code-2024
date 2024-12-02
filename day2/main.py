@@ -53,6 +53,14 @@ def day1():
 
 			if (is_all_decreasing(sequence) or is_all_increasing(sequence)) and gap_is_ok(sequence):
 				safe_reports += 1
+			else:
+				for i in range(len(sequence)):
+					new_sequence = sequence.copy()
+					new_sequence.pop(i)
+
+					if (is_all_decreasing(new_sequence) or is_all_increasing(new_sequence)) and gap_is_ok(new_sequence):
+						safe_reports += 1
+						break
 
 	print(safe_reports)
 
