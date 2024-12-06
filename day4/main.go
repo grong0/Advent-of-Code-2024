@@ -12,7 +12,7 @@ func check(er error) {
 	}
 }
 
-func day1() {
+func part1() {
 	file, err := os.ReadFile("./input.txt")
 	check(err)
 
@@ -78,7 +78,7 @@ func day1() {
 	println("tot\t", tot)
 }
 
-func day2() {
+func part2() {
 	file, err := os.ReadFile("./input.txt")
 	check(err)
 	spl := strings.Split(string(file), "\n")
@@ -106,6 +106,6 @@ func day2() {
 func main() {
 	println("starting...")
 
-	// day1()
-	day2()
+	// part1()
+	part2()
 }

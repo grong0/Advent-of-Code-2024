@@ -61,7 +61,6 @@ fn part2() {
 		}
 		
 		if current_mod.eq("don't()") {
-			// current_mod = "do()";
 			continue;
 		}
 		

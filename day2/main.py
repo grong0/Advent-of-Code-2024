@@ -45,7 +45,7 @@ def gap_is_ok(sequence):
 		last_item = i
 	return True
 
-def day1():
+def main():
 	safe_reports = 0
 	with open("./input.txt") as f:
 		for row in f:
@@ -65,4 +65,4 @@ def day1():
 	print(safe_reports)
 
 if __name__ == "__main__":
-	day1()
+	main()
