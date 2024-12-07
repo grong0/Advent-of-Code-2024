@@ -1,5 +1,4 @@
-import math
-from random import randint
+import itertools
 
 
 def parse(values: list[int], operators: list[str]) -> int:
@@ -10,13 +9,12 @@ def parse(values: list[int], operators: list[str]) -> int:
                 total += value
             case "*":
                 total *= value
+            case "||":
+                total = int(str(total) + str(value))
     return total
 
 def generate_operators(length: int) -> list[list[str]]:
-    operators = set()
-    while len(operators) != math.pow(2, length):
-        operators.add(("".join([("*" if randint(0, 1) == 1 else "+") + "," for _ in range(length)])))
-    return [operator.split(",")[:-1] for operator in operators]
+    return [list(comb) for comb in itertools.product(["+", "*", "||"], repeat=length)]
 
 def main():
     operations = []
