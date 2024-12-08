@@ -43,11 +43,6 @@ def main():
                     grid2[anti_loc[0]][anti_loc[1]] = "#"
                     anti_loc = (anti_loc[0] - row_distance, anti_loc[1] - col_distance)
 
-    for row in grid:
-        print("".join(row))
-    for row in grid2:
-        print("".join(row))
-
     print(len(antinode_locations))
 
 
