@@ -30,8 +30,8 @@ def main():
                         "Y": int(lines[1][lines[1].find("+", lines[1].find(",") + 1) + 1 :]),
                     },
                     "prize": {
-                        "X": int(lines[2][lines[2].find("=") + 1 : lines[2].find(",")]),
-                        "Y": int(lines[2][lines[2].find("=", lines[2].find(",") + 1) + 1 :]),
+                        "X": int(lines[2][lines[2].find("=") + 1 : lines[2].find(",")]) + 10000000000000,
+                        "Y": int(lines[2][lines[2].find("=", lines[2].find(",") + 1) + 1 :]) + 10000000000000,
                     },
                 }
             )
