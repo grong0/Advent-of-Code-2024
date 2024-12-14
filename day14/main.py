@@ -1,3 +1,35 @@
+def display_grid(area: list[list[str]], robots: list[dict[str, tuple[int, int]]], dont_display: bool = False) -> list[list[str]]:
+    new_area = [row.copy() for row in area]
+    for robot in robots:
+        if new_area[robot["pos"][0]][robot["pos"][1]]:
+            new_area[robot["pos"][0]][robot["pos"][1]] = "1"
+            continue
+        new_area[robot["pos"][0]][robot["pos"][1]] = str(int(new_area[robot["pos"][0]][robot["pos"][1]]) + 1)
+    if not dont_display:
+        for row in new_area:
+            print("".join(row))
+    return new_area
+
+
+def if_line_exists(area: list[list[str]], robots: list[dict[str, tuple[int, int]]], threshold: int = 3) -> bool:
+    area = display_grid(area, robots, True)
+    max_streak = 0
+    for row in area:
+        non_period_streak = 0
+        for char in row:
+            if char != ".":
+                non_period_streak += 1
+                continue
+
+            if non_period_streak > max_streak:
+                max_streak = non_period_streak
+            non_period_streak = 0
+
+        if non_period_streak > max_streak:
+            max_streak = non_period_streak
+        non_period_streak = 0
+    return max_streak >= threshold
+
 def main():
     USING_SAMPLE = False
     width = 11 if USING_SAMPLE else 101
@@ -13,58 +45,16 @@ def main():
                 "vel": (int(velocity[velocity.find(",")+1:]), int(velocity[velocity.find("=")+1:velocity.find(",")]))
             })
 
-    print(width, height)
-    print(width // 2, height // 2)
-
-    SECONDS = 100
-    for robot in robots:
-        robot["pos"] = ((robot["pos"][0] + (robot["vel"][0] * SECONDS)) % height, (robot["pos"][1] + (robot["vel"][1] * SECONDS)) % width)
-
-    # for robot in robots:
-    #     print(robot["pos"])
-
-    tot_safety_factor = 0
-    curr_safety_factor = 0
-    for i in range(2):
-        for j in range(2):
-            match (i, j):
-                # determine quadrant
-                case (0, 0):
-                    min_width = 0
-                    max_width = width // 2 - 1
-                    min_height = 0
-                    max_height = height // 2 - 1
-                case (0, 1):
-                    min_width = width // 2 + 1
-                    max_width = width
-                    min_height = 0
-                    max_height = height // 2 - 1
-                case (1, 0):
-                    min_width = 0
-                    max_width = width // 2 - 1
-                    min_height = height // 2 + 1
-                    max_height = height
-                case (1, 1):
-                    min_width = width // 2 + 1
-                    max_width = width
-                    min_height = height // 2 + 1
-                    max_height = height
-                case _:
-                    min_width = 0
-                    max_width = width // 2 - 1
-                    min_height = 0
-                    max_height = height // 2 - 1
-
-            curr_safety_factor = 0
-            for robot in robots:
-                if min_height <= robot["pos"][0] <= max_height and min_width <= robot["pos"][1] <= max_width:
-                    curr_safety_factor += 1
-                    
-            if tot_safety_factor == 0:
-                tot_safety_factor = curr_safety_factor
-                continue
-            tot_safety_factor *= curr_safety_factor
-    print(tot_safety_factor)
+    second = 0
+    while True:
+        second += 1
+        for robot in robots:
+            robot["pos"] = ((robot["pos"][0] + robot["vel"][0]) % height, (robot["pos"][1] + robot["vel"][1]) % width)
+        # display_grid(area, robots)
+        if if_line_exists(area, robots, 10):
+            display_grid(area, robots)
+            break
+        print("SECOND", second, "\n")
 
 
 if __name__ == "__main__":
