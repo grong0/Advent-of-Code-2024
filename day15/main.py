@@ -6,104 +6,165 @@ def display_grid(grid: list[list[str]], pos: tuple[int, int]):
         print("".join(line))
 
 
-def parse_movements(grid: list[list[str]], pos: tuple[int, int], command: str) -> tuple[list[list[str]], tuple[int, int]]:
+def move_box(grid: list[list[str]], raw_pos: tuple[int, int], command: str) -> bool:
+    mod = 1
+    checking = ""
+    pos = raw_pos
+    if grid[raw_pos[0]][raw_pos[1]] == "]":
+        pos = (raw_pos[0], raw_pos[1] - 1)
     next_pos = (-1, -1)
-    next_tiles = []
     match command:
         case "^":
-            # next_tile = grid[pos[0] - 1][pos[1]]
+            mod = -1
+            t1 = grid[pos[0] - 1][pos[1]]
+            t2 = grid[pos[0] - 1][pos[1] + 1]
+            checking = t1 + t2
             next_pos = (pos[0] - 1, pos[1])
-            next_tiles = [grid[i][pos[1]] for i in range(pos[0] - 1, -1, -1)]
         case "v":
-            # next_tile = grid[pos[0] + 1][pos[1]]
+            mod = 1
+            t1 = grid[pos[0] + 1][pos[1]]
+            t2 = grid[pos[0] + 1][pos[1] + 1]
+            checking = t1 + t2
             next_pos = (pos[0] + 1, pos[1])
-            next_tiles = [grid[i][pos[1]] for i in range(pos[0] + 1, len(grid))]
         case "<":
-            # next_tile = grid[pos[0]][pos[1] - 1]
-            next_pos = (pos[0], pos[1] - 1)
-            next_tiles = grid[pos[0]][:pos[1]]
-            next_tiles.reverse()
+            checking = grid[pos[0]][pos[1] - 1]
+            next_pos = (pos[0], pos[1] - 2)
         case ">":
-            # next_tile = grid[pos[0]][pos[1] + 1]
-            next_pos = (pos[0], pos[1] + 1)
-            next_tiles = grid[pos[0]][pos[1] + 1:]
+            checking = grid[pos[0]][pos[1] + 2]
+            next_pos = (pos[0], pos[1] + 2)
         case _:
             raise Exception("not a command")
 
-    match next_tiles[0]:
-        case "#":
-            return grid, pos
-        case ".":
-            return grid, next_pos
-        case "O":
-            index_of_wall = next_tiles.index("#")
-            try:
-                index_of_blank = next_tiles.index(".")
-            except:
-                return grid, pos
+    if checking == "][":
+        move_box(grid, (pos[0] + mod, pos[1] - 1), command)
+        move_box(grid, (pos[0] + mod, pos[1] + 1), command)
+    elif len(checking) == 1 and ("[" in checking or "]" in checking):
+        move_box(grid, next_pos, command)
+    elif checking == ".[":
+        move_box(grid, (next_pos[0], next_pos[1] + 1), command)
+    elif checking == "].":
+        move_box(grid, (next_pos[0], next_pos[1] - 1), command)
+    elif checking == "[]":
+        move_box(grid, next_pos, command)
 
-            if index_of_blank < index_of_wall:
-                first = True
-                holding_box = False
-                value = "."
-                for index, item in enumerate(next_tiles):
-                    if holding_box:
-                        value = "O"
-                    elif not first:
-                        value = "."
-                        break
-
-                    if item != "0":
-                        match command:
-                            case "^":
-                                grid[pos[0] - index - 1][pos[1]] = value
-                            case "v":
-                                grid[pos[0] + index + 1][pos[1]] = value
-                            case "<":
-                                grid[pos[0]][pos[1] - index - 1] = value
-                            case ">":
-                                grid[pos[0]][pos[1] + index + 1] = value
-                            case _:
-                                raise Exception("not a command")
-
-                    if first:
-                        first = False
-                        holding_box = True
-                    elif item == ".":
-                        holding_box = False
-                pos = next_pos
-            return grid, pos
-
+    match command:
+        case "^":
+            grid[pos[0] - 1][pos[1]] = "["
+            grid[pos[0] - 1][pos[1] + 1] = "]"
+            grid[pos[0]][pos[1]] = "."
+            grid[pos[0]][pos[1] + 1] = "."
+        case "v":
+            grid[pos[0] + 1][pos[1]] = "["
+            grid[pos[0] + 1][pos[1] + 1] = "]"
+            grid[pos[0]][pos[1]] = "."
+            grid[pos[0]][pos[1] + 1] = "."
+        case "<":
+            grid[pos[0]][pos[1] - 1] = "["
+            grid[pos[0]][pos[1]] = "]"
+            grid[pos[0]][pos[1] + 1] = "."
+        case ">":
+            grid[pos[0]][pos[1] + 1] = "["
+            grid[pos[0]][pos[1] + 2] = "]"
+            grid[pos[0]][pos[1]] = "."
         case _:
-            raise Exception("not a known tile")
+            raise Exception("not a command")
+    return True
+
+
+def can_push(grid: list[list[str]], raw_pos: tuple[int, int], command: str) -> bool:
+    checking = ""
+    pos = raw_pos
+    if grid[raw_pos[0]][raw_pos[1]] == "]":
+        pos = (raw_pos[0], raw_pos[1] - 1)
+    match command:
+        case "^":
+            t1 = grid[pos[0] - 1][pos[1]]
+            t2 = grid[pos[0] - 1][pos[1] + 1]
+            checking = t1 + t2
+        case "v":
+            t1 = grid[pos[0] + 1][pos[1]]
+            t2 = grid[pos[0] + 1][pos[1] + 1]
+            checking = t1 + t2
+        case "<":
+            checking = grid[pos[0]][pos[1] - 1]
+        case ">":
+            checking = grid[pos[0]][pos[1] + 2]
+        case _:
+            raise Exception("not a command")
+
+    if checking == ".." or checking == ".":
+        return True
+    elif "#" in checking:
+        return False
+
+    if len(checking) == 1:
+        next_pos = (pos[0], pos[1] - 2)
+        if checking == "[":
+            next_pos = (pos[0], pos[1] + 2)
+        return can_push(grid, next_pos, command)
+
+    if checking[0] == "[":
+        return can_push(grid, (pos[0] + (1 if command == "v" else -1), pos[1]), command)
+    elif checking[1] == ".":
+        return can_push(grid, (pos[0] + (1 if command == "v" else -1), pos[1] - 1), command)
+    elif checking[0] == ".":
+        return can_push(grid, (pos[0] + (1 if command == "v" else -1), pos[1] + 1), command)
+    return can_push(grid, (pos[0] + (1 if command == "v" else -1), pos[1] - 1), command) and can_push(grid, (pos[0] + (1 if command == "v" else -1), pos[1] + 1), command)
+
+
+def next_block(grid: list[list[str]], pos: tuple[int, int], command: str) -> tuple[str, tuple[int, int]]:
+    match command:
+        case "^":
+            return grid[pos[0] - 1][pos[1]], (pos[0] - 1, pos[1])
+        case "v":
+            return grid[pos[0] + 1][pos[1]], (pos[0] + 1, pos[1])
+        case "<":
+            return grid[pos[0]][pos[1] - 1], (pos[0], pos[1] - 1)
+        case ">":
+            return grid[pos[0]][pos[1] + 1], (pos[0], pos[1] + 1)
+        case _:
+            return "", (-1, -1)
 
 
 def main():
     grid = []
     commands = ""
-    robot_pos = (-1, -1)
-    with open("./sample.txt") as f:
+    pos = (-1, -1)
+    with open("./input.txt") as f:
         reading_area = True
-        for index, row in enumerate(f):
+        for i, row in enumerate(f):
             if len(row) < 2:
                 reading_area = False
             if reading_area:
-                if row.find("@") != -1:
-                    robot_pos = (index, row.find("@"))
-                    row = row.replace("@", ".")
-                grid.append(list(row.strip("\n")))
+                final_row = []
+                for j, col in enumerate(row):
+                    match col:
+                        case ".":
+                            final_row.extend([".", "."])
+                        case "@":
+                            pos = (i, j * 2)
+                            final_row.extend([".", "."])
+                        case "#":
+                            final_row.extend(["#", "#"])
+                        case "O":
+                            final_row.extend(["[", "]"])
+                grid.append(final_row)
                 continue
+
             commands += row.strip("\n")
 
     for command in commands:
-        grid, robot_pos = parse_movements(grid, robot_pos, command)
-
-    display_grid(grid, robot_pos)
+        block, next_pos = next_block(grid, pos, command)
+        if block in ["[", "]"] and can_push(grid, next_pos, command):
+            move_box(grid, next_pos, command)
+            pos = next_pos
+        elif block == ".":
+            pos = next_pos
 
     total_gps_coords = 0
     for i, row in enumerate(grid):
         for j, col in enumerate(row):
-            if col == "O":
+            if col == "[":
                 total_gps_coords += (i * 100) + j
     print(total_gps_coords)
 
