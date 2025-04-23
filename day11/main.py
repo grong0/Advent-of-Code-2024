@@ -1,60 +1,60 @@
-import datetime
-import functools
-import sys
+from functools import cache
 
-memo = {}
 
-# @functools.cache
-def parse(stones: tuple, blink_target: int, blink_count: int = 0) -> tuple:
-    # if (stones, blink_target, blink_count) in memo.keys():
-    #     return memo[((stones, blink_target, blink_count))]
+def modify_stones(stones: dict[str, int], stone: str, value: int):
+    if stone not in stones.keys():
+        if value == -1:
+            print("stone didnt exist and is already -1")
+        stones[stone] = value
+        return
+    stones[stone] += value
 
-    if blink_count == blink_target:
-        # memo[(stones, blink_target, blink_count)] = stones
-        return stones
 
-    new_stones = []
-    for stone in stones:
-        if stone == 0:
-            new_stones.extend(parse((1, ), blink_target, blink_count + 1))
-        elif len(str(stone)) % 2 == 0:
-            length = len(str(stone))
-            new_stones.extend(parse((int(str(stone)[:length//2]), ), blink_target, blink_count + 1))
-            new_stones.extend(parse((int(str(stone)[length//2:length]), ), blink_target, blink_count + 1))
-        else:
-            new_stones.extend(parse((stone * 2024, ), blink_target, blink_count + 1))
+# @cache
+# def parse(stones: tuple, blink_target: int, blink_count: int = 0) -> tuple:
+#     if blink_count == blink_target:
+#         return stones
 
-    # memo[(stones, blink_target, blink_count)] = tuple(new_stones)
-    return tuple(new_stones)
+#     new_stones = []
+#     for stone in stones:
+#         if stone == 0:
+#             new_stones.extend(parse((1, ), blink_target, blink_count + 1))
+#         elif len(str(stone)) % 2 == 0:
+#             length = len(str(stone))
+#             new_stones.extend(parse((int(str(stone)[:length//2]), ), blink_target, blink_count + 1))
+#             new_stones.extend(parse((int(str(stone)[length//2:length]), ), blink_target, blink_count + 1))
+#         else:
+#             new_stones.extend(parse((stone * 2024, ), blink_target, blink_count + 1))
+
+#     return tuple(new_stones)
+
 
 def main():
-    stones = []
+    stones: dict[str, int] = {}
     with open("./sample.txt") as f:
-        stones = [int(item) for item in f.read().strip("\n").split(" ")]
+        for stone in f.read().strip("\n").split(" "):
+            stones[stone] = 1
 
-    # for i in range(75):
-    #     print(i)
+    for blink in range(75):
+        print(blink)
+        new_stones = stones.copy()
+        for i, stone in enumerate(stones.keys()):
+            count = stones[stone]
+            for _ in range(count):
+                if stone == 0:
+                    modify_stones(new_stones, "1", 1)
+                elif len(str(stone)) % 2 == 0:
+                    length = len(str(stone))
+                    modify_stones(new_stones, str(stone)[:length//2], 1)
+                    modify_stones(new_stones, str(stone)[length//2:length], 1)
+                else:
+                    modify_stones(new_stones, str(int(stone) * 2024), 1)
+                modify_stones(new_stones, stone, -1)
+        stones = new_stones
 
-    #     new_stones = []
-    #     for stone in stones:
-    #         if stone in memo.keys():
-    #             # print("memo was used for", stone, "equated to", memo[stone])
-    #             new_stones.extend(memo[stone])
-    #             continue
-    #         if stone == 0:
-    #             memo[stone] = (1, )
-    #             new_stones.append(1)
-    #         elif len(str(stone)) % 2 == 0:
-    #             length = len(str(stone))
-    #             memo[stone] = (int(str(stone)[:length//2]), int(str(stone)[length//2:length]))
-    #             new_stones.append(int(str(stone)[:length//2]))
-    #             new_stones.append(int(str(stone)[length//2:length]))
-    #         else:
-    #             memo[stone] = (stone * 2024, )
-    #             new_stones.append(stone * 2024)
-    #     stones = new_stones
-
-    stones = parse(tuple(stones), 40)
+    total_stones = 0
+    for key in stones.keys():
+        total_stones += stones[key]
 
     print(stones)
     print(len(stones))
