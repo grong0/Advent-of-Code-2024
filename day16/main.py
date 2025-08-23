@@ -1,7 +1,6 @@
 # from functools import cache
-import os
+import datetime
 from enum import Enum
-import sys
 from typing import Optional
 
 
@@ -28,6 +27,9 @@ class Point:
 
     def same_as(self, point: "Point") -> bool:
         return self.x == point.x and self.y == point.y
+
+    def as_tuple(self) -> tuple[int, int]:
+        return self.x, self.y
 
     def move(self, direction: Direction, distance: int) -> "Point":
         new_point = Point(self.x, self.y)
@@ -81,7 +83,7 @@ class Deer:
         new_path.add(self.point)
         return Deer(new_point, self.direction, self.score + 1, new_path)
 
-    def is_valid(self, maze: list[list[str]], path: set[Point]) -> bool:
+    def is_valid(self, maze: list[list[str]], visited_points: dict[Point, "Deer"]) -> bool:
         # bounds
         if not (0 <= self.point.x < len(maze[0])) or not (0 <= self.point.y < len(maze)):
             return False
@@ -90,20 +92,15 @@ class Deer:
         if maze[self.point.y][self.point.x] == "#":
             return False
 
-        # been there in local path
-        # for point in self.path:
-        #     if self.point.same_as(point):
-        #         return False
-
         # been there in global path
-        for point in path:
-            if self.point.same_as(point):
+        for point in visited_points:
+            if self.point.same_as(point) and visited_points[point].score + 2000 <= self.score:
                 return False
 
         return True
 
 
-def display_maze(maze: list[list[str]], start: Point, end: Point, path: set[Point], deer: Deer):
+def display_maze(maze: list[list[str]], start: Point, end: Point, path: dict[Point, Deer], deer: Deer):
     maze_copy = [row.copy() for row in maze]
     for point in path:
         maze_copy[point.y][point.x] = "\033[0;31mo\033[0m"
@@ -146,41 +143,50 @@ def get_new_deer(queue: dict[int, list[Deer]]) -> Optional[Deer]:
         return deer
 
 
-def run(maze: list[list[str]], start: Point, end: Point) -> Deer:
+def run(maze: list[list[str]], start: Point, end: Point) -> dict[int, list[Deer]]:
     queue: dict[int, list[Deer]] = {0: [Deer(start, Direction.EAST, 0, set())]}
-    path: set[Point] = set()
+    visisted_points: dict[Point, Deer] = {}
 
-    best_deer: Optional[Deer] = Deer(Point(-1, -1), Direction.NORTH, sys.maxsize, set())
+    completed_runs: dict[int, list[Deer]] = {}
     while len(queue) != 0:
         deer = get_new_deer(queue)
         if deer is None:
             break
-        path.add(deer.point)
+
+        if deer.point not in visisted_points:
+            visisted_points[deer.point] = deer
+        elif visisted_points[deer.point].score > deer.score:
+            print("\n\n\n ===================FORTNITE=================== \n\n\n")
         deer.path.add(deer.point)
 
         # end check
-        if deer.point.same_as(end) and deer.score < best_deer.score:
-            best_deer = deer
+        if deer.point.same_as(end):
+            if deer.score not in completed_runs.keys():
+                completed_runs[deer.score] = []
+            completed_runs[deer.score].append(deer)
+            continue
 
         # update queue
-        if deer.as_left().is_valid(maze, path):
+        if deer.as_left().is_valid(maze, visisted_points):
             add_deer(queue, deer.as_left())
-        if deer.as_right().is_valid(maze, path):
+        if deer.as_right().is_valid(maze, visisted_points):
             add_deer(queue, deer.as_right())
-        if deer.as_forward().is_valid(maze, path):
+        if deer.as_forward().is_valid(maze, visisted_points):
             add_deer(queue, deer.as_forward())
 
         # debug
         # os.system("clear")
-        # display_maze(maze, start, end, path, deer)
+        # display_maze(maze, start, end, visisted_points, deer)
         # print(f"queue length: {len(queue)}")
         # print(f"queue keys: {queue.keys()}")
         # total_deer = 0
         # for key in queue.keys():
         #     total_deer += len(queue[key])
         # print(f"total deer: {total_deer}")
+        # deer.print()
+        # _ = input()
 
-    return best_deer
+    return completed_runs
 
 
 def main():
@@ -197,7 +203,17 @@ def main():
                 row = row.replace("E", ".")
             maze.append(list(row.strip("\n")))
 
-    run(maze, start, end).print()
+    start_time = datetime.datetime.now()
+    complete_runs = run(maze, start, end)
+    end_time = datetime.datetime.now()
+    sorted_keys = list(complete_runs.keys())
+    sorted_keys.sort()
+    print(f"part1: {complete_runs[sorted_keys[0]][0].score}")
+    points: set[tuple[int, int]] = set()
+    for deer in complete_runs[sorted_keys[0]]:
+        points = points.union(map(lambda i: i.as_tuple(), deer.path))
+    print(f"part2: {len(points)}")
+    print(f"runtime: {(end_time - start_time).seconds}")
 
 
 if __name__ == "__main__":
