@@ -1,98 +1,203 @@
+# from functools import cache
+import os
+from enum import Enum
 import sys
-from functools import cache
+from typing import Optional
 
 
-def display_maze(maze: list[list[str]], start: tuple[int, int] = (-1, -1), end: tuple[int, int] = (-1, -1), pos: tuple[int, int] = (-1, -1), direction: int = -1):
-    for index, row in enumerate(maze):
+class Direction(Enum):
+    NORTH = 0
+    EAST = 1
+    SOUTH = 2
+    WEST = 3
+
+    def rotate_clockwise(self) -> "Direction":
+        return Direction((self.value + 1) % 4)
+
+    def rotate_counter_clockwise(self) -> "Direction":
+        return Direction((self.value + 3) % 4)
+
+
+class Point:
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int) -> None:
+        self.x = x
+        self.y = y
+
+    def same_as(self, point: "Point") -> bool:
+        return self.x == point.x and self.y == point.y
+
+    def move(self, direction: Direction, distance: int) -> "Point":
+        new_point = Point(self.x, self.y)
+        match direction:
+            case Direction.NORTH:
+                new_point.y -= distance
+            case Direction.EAST:
+                new_point.x += distance
+            case Direction.SOUTH:
+                new_point.y += distance
+            case Direction.WEST:
+                new_point.x -= distance
+        return new_point
+
+
+class Deer:
+    point: Point
+    direction: Direction
+    score: int
+    path: set[Point]
+
+    def __init__(self, point: Point, direction: Direction, score: int, path: set[Point]) -> None:
+        self.point = point
+        self.direction = direction
+        self.score = score
+        self.path = path
+
+    def print(self) -> None:
+        print(f"point: {self.point.__dict__}")
+        print(f"direction: {self.direction.name}")
+        print(f"score: {self.score}")
+        print(f"path: {self.path}")
+
+    def as_left(self) -> "Deer":
+        new_dir = Direction.rotate_counter_clockwise(self.direction)
+        new_point = self.point.move(new_dir, 1)
+        new_path = self.path.copy()
+        new_path.add(self.point)
+        return Deer(new_point, new_dir, self.score + 1001, new_path)
+
+    def as_right(self) -> "Deer":
+        new_dir = Direction.rotate_clockwise(self.direction)
+        new_point = self.point.move(new_dir, 1)
+        new_path = self.path.copy()
+        new_path.add(self.point)
+        return Deer(new_point, new_dir, self.score + 1001, new_path)
+
+    def as_forward(self) -> "Deer":
+        new_point = self.point.move(self.direction, 1)
+        new_path = self.path.copy()
+        new_path.add(self.point)
+        return Deer(new_point, self.direction, self.score + 1, new_path)
+
+    def is_valid(self, maze: list[list[str]], path: set[Point]) -> bool:
+        # bounds
+        if not (0 <= self.point.x < len(maze[0])) or not (0 <= self.point.y < len(maze)):
+            return False
+
+        # tile
+        if maze[self.point.y][self.point.x] == "#":
+            return False
+
+        # been there in local path
+        # for point in self.path:
+        #     if self.point.same_as(point):
+        #         return False
+
+        # been there in global path
+        for point in path:
+            if self.point.same_as(point):
+                return False
+
+        return True
+
+
+def display_maze(maze: list[list[str]], start: Point, end: Point, path: set[Point], deer: Deer):
+    maze_copy = [row.copy() for row in maze]
+    for point in path:
+        maze_copy[point.y][point.x] = "\033[0;31mo\033[0m"
+    for y, row in enumerate(maze_copy):
         new_row = row.copy()
-        if index == start[0]:
-            new_row[start[1]] = "S"
-        elif index == end[0]:
-            new_row[end[1]] = "E"
-        if index == pos[0]:
+        if y == start.y:
+            new_row[start.x] = "S"
+        elif y == end.y:
+            new_row[end.x] = "E"
+        if y == deer.point.y:
             icon = "$"
-            match direction:
-                case 0:
+            match deer.direction:
+                case Direction.NORTH:
                     icon = "^"
-                case 1:
+                case Direction.EAST:
                     icon = ">"
-                case 2:
+                case Direction.SOUTH:
                     icon = "v"
-                case 3:
+                case Direction.WEST:
                     icon = "<"
-            new_row[pos[1]] = icon
+            new_row[deer.point.x] = f"\033[0;32m{icon}\033[0m"
         print("".join(new_row))
 
 
-@cache
-def get_valid_cardinal_neighbors(maze: list[list[str]], pos: tuple[int, int]) -> list[dict]:
-    neighbors = []
-    if pos[0] - 1 >= 0 and maze[pos[0] - 1][pos[1]] != "#":
-        neighbors.append({
-            "direction": 0,
-            "pos": (pos[0] - 1, pos[1])
-        })
-    if pos[0] + 1 < len(maze) and maze[pos[0] + 1][pos[1]] != "#":
-        neighbors.append({
-            "direction": 2,
-            "pos": (pos[0] + 1, pos[1])
-        })
-    if pos[1] - 1 >= 0 and maze[pos[0]][pos[1] - 1] != "#":
-        neighbors.append({
-            "direction": 3,
-            "pos": (pos[0], pos[1] - 1)
-        })
-    if pos[1] + 1 < len(maze[0]) and maze[pos[0]][pos[1] + 1] != "#":
-        neighbors.append({
-            "direction": 1,
-            "pos": (pos[0], pos[1] + 1)
-        })
-    return neighbors
+def add_deer(queue: dict[int, list[Deer]], deer: Deer):
+    if deer.score not in queue.keys():
+        queue[deer.score] = []
+    queue[deer.score].append(deer)
 
 
-# @cache
-def run(maze: tuple[tuple[str]], pos: tuple[int, int], end: tuple[int, int], score: int, path: tuple[tuple[tuple[int, int], int], ...], direction: int) -> int:
-    if pos == end:
-        return score
-
-    set_path = set(list(path))
-    set_path.add((pos, direction))
-    path = tuple(set_path)
-
-    lowset_score = -1
-    for neighbor in get_valid_cardinal_neighbors(maze, pos):
-        if (neighbor["pos"], neighbor["direction"]) in path or (neighbor["pos"], abs(neighbor["direction"] - direction)) in path:
+def get_new_deer(queue: dict[int, list[Deer]]) -> Optional[Deer]:
+    sorted_keys = list(queue.keys())
+    sorted_keys.sort()
+    for key in sorted_keys:
+        if len(queue[key]) == 0:
             continue
+        deer = queue[key].pop(0)
+        if len(queue[key]) == 0:
+            queue.pop(key)
+        return deer
 
-        neighbor_score = -1
-        if neighbor["direction"] != direction and abs(direction - neighbor["direction"]) != 2:
-            neighbor_score = run(maze, neighbor["pos"], end, score + 1001, path, neighbor["direction"])
-        elif neighbor["direction"] == direction:
-            neighbor_score = run(maze, neighbor["pos"], end, score + 1, path, direction)
 
-        if lowset_score == -1 or (neighbor_score != -1 and neighbor_score < lowset_score):
-            lowset_score = neighbor_score
+def run(maze: list[list[str]], start: Point, end: Point) -> Deer:
+    queue: dict[int, list[Deer]] = {0: [Deer(start, Direction.EAST, 0, set())]}
+    path: set[Point] = set()
 
-    return lowset_score
+    best_deer: Optional[Deer] = Deer(Point(-1, -1), Direction.NORTH, sys.maxsize, set())
+    while len(queue) != 0:
+        deer = get_new_deer(queue)
+        if deer is None:
+            break
+        path.add(deer.point)
+        deer.path.add(deer.point)
+
+        # end check
+        if deer.point.same_as(end) and deer.score < best_deer.score:
+            best_deer = deer
+
+        # update queue
+        if deer.as_left().is_valid(maze, path):
+            add_deer(queue, deer.as_left())
+        if deer.as_right().is_valid(maze, path):
+            add_deer(queue, deer.as_right())
+        if deer.as_forward().is_valid(maze, path):
+            add_deer(queue, deer.as_forward())
+
+        # debug
+        # os.system("clear")
+        # display_maze(maze, start, end, path, deer)
+        # print(f"queue length: {len(queue)}")
+        # print(f"queue keys: {queue.keys()}")
+        # total_deer = 0
+        # for key in queue.keys():
+        #     total_deer += len(queue[key])
+        # print(f"total deer: {total_deer}")
+
+    return best_deer
 
 
 def main():
-    maze = []
-    start = (-1, -1)
-    end = (-1, -1)
+    maze: list[list[str]] = []
+    start = Point(-1, -1)
+    end = Point(-1, -1)
     with open("./input.txt") as f:
-        for index, row in enumerate(f):
+        for y, row in enumerate(f):
             if row.find("S") != -1:
-                start = (index, row.find("S"))
+                start = Point(row.find("S"), y)
                 row = row.replace("S", ".")
             elif row.find("E") != -1:
-                end = (index, row.find("E"))
+                end = Point(row.find("E"), y)
                 row = row.replace("E", ".")
-            maze.append(tuple(row.strip("\n")))
+            maze.append(list(row.strip("\n")))
 
-    print(sys.getrecursionlimit())
-    sys.setrecursionlimit(5000)
-    print(run(tuple(maze), start, end, 0, tuple([]), 1))
+    run(maze, start, end).print()
 
 
 if __name__ == "__main__":
